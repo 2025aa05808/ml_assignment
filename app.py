@@ -1,49 +1,37 @@
 import streamlit as st
 import pandas as pd
-import pickle
-from sklearn.metrics import classification_report, confusion_matrix
+import joblib
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import classification_report, accuracy_score
 
-st.title("Heart Disease Prediction – ML Models")
+st.title("Fetal Health Classification App")
 
-models = {
-    "Logistic Regression": "lr_model.pkl",
-    "Decision Tree": "dt_model.pkl",
-    "KNN": "knn_model.pkl",
-    "Naive Bayes": "nb_model.pkl",
-    "Random Forest": "rf_model.pkl",
-    "XGBoost": "xgb_model.pkl"
-}
+st.write("Upload a CSV file containing **test data** (without target column).")
 
-model_choice = st.selectbox("Choose a Model", list(models.keys()))
+uploaded_file = st.file_uploader("Upload CSV", type=["csv"])
 
-file = st.file_uploader("Upload Test CSV (heart.csv format)", type=["csv"])
+model_names = [
+    "Logistic Regression", "Decision Tree", "KNN",
+    "Naive Bayes", "Random Forest", "XGBoost"
+]
 
-if file:
-    df = pd.read_csv(file)
+model_choice = st.selectbox("Choose Model", model_names)
 
-    st.write("Uploaded Data Sample:")
-    st.write(df.head())
+if uploaded_file is not None:
+    df = pd.read_csv(uploaded_file)
+    st.write("Preview of Uploaded Data:")
+    st.dataframe(df.head())
 
-    if "HeartDisease" in df.columns:
-        y_true = df["HeartDisease"]
-        df = df.drop("HeartDisease", axis=1)
-    else:
-        y_true = None
+    # Load model & scaler
+    model = joblib.load(f"{model_choice.replace(' ', '_')}.pkl")
+    scaler = joblib.load("scaler.pkl")
 
-    # Load full pipeline (preprocessing + model)
-    model = pickle.load(open(models[model_choice], "rb"))
+    X_scaled = scaler.transform(df)
 
-    # Predict
-    y_pred = model.predict(df)
+    preds = model.predict(X_scaled)
 
     st.subheader("Predictions")
-    st.write(y_pred)
+    st.write(preds)
 
-    if y_true is not None:
-        st.subheader("Confusion Matrix")
-        st.write(confusion_matrix(y_true, y_pred))
-
-        st.subheader("Classification Report")
-        st.text(classification_report(y_true, y_pred))
-    else:
-        st.warning("No target column found — predictions only")
+    if st.button("Show Model Description"):
+        st.write(f"{model_choice} model used for fetal health prediction.")
