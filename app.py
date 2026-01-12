@@ -10,46 +10,53 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 
 st.title("Fetal Health Classification App")
-st.write("Upload test CSV with **fetal_health** column as true labels.")
+st.write("Upload a test CSV with the **fetal_health** column as true labels.")
 
 uploaded_file = st.file_uploader("Upload CSV", type=["csv"])
 
 model_names = [
-    "Logistic Regression", "Decision Tree", "KNN",
-    "Naive Bayes", "Random Forest", "XGBoost"
+    "Logistic Regression", 
+    "Decision Tree", 
+    "KNN",
+    "Naive Bayes", 
+    "Random Forest", 
+    "XGBoost"
 ]
 
 model_choice = st.selectbox("Choose a Model", model_names)
 
 if uploaded_file is not None:
 
+    # Read CSV
     df = pd.read_csv(uploaded_file)
 
     st.subheader("Preview of Uploaded Data")
     st.dataframe(df.head())
 
     # --------------------------------------
-    # Detect true labels
+    # Identify true labels
     # --------------------------------------
     if "fetal_health" in df.columns:
         true_labels = df["fetal_health"]
     elif "true_label" in df.columns:
         true_labels = df["true_label"]
     else:
-        st.error("CSV must contain fetal_health column as true label.")
+        st.error("CSV must contain 'fetal_health' or 'true_label' column.")
         st.stop()
 
     # --------------------------------------
-    # Prepare features (drop label before prediction)
+    # FIX: Drop label column (avoid feature mismatch)
     # --------------------------------------
-    X = df.drop(["fetal_health"], axis=1, errors="ignore")
-    X = df.drop(["true_label"], axis=1, errors="ignore")
+    X = df.drop(columns=["fetal_health", "true_label"], errors="ignore")
 
     # Load model + scaler
-    model = joblib.load(f"model/{model_choice.replace(' ', '_')}.pkl")
-    scaler = joblib.load("model/scaler.pkl")
+    model_path = f"model/{model_choice.replace(' ', '_')}.pkl"
+    scaler_path = "model/scaler.pkl"
 
-    # Scale
+    model = joblib.load(model_path)
+    scaler = joblib.load(scaler_path)
+
+    # Scale the data
     X_scaled = scaler.transform(X)
 
     # Predict
@@ -83,16 +90,18 @@ if uploaded_file is not None:
     cm = confusion_matrix(true_labels, predictions)
 
     fig, ax = plt.subplots()
-    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues',
-                xticklabels=[1, 2, 3], yticklabels=[1, 2, 3], ax=ax)
+    sns.heatmap(
+        cm, annot=True, fmt='d', cmap='Blues',
+        xticklabels=[1, 2, 3], yticklabels=[1, 2, 3], ax=ax
+    )
     ax.set_xlabel("Predicted")
     ax.set_ylabel("Actual")
-
     st.pyplot(fig)
 
     # --------------------------------------
     # Classification Report
     # --------------------------------------
     st.subheader("Classification Report")
+
     report = classification_report(true_labels, predictions)
     st.text(report)
